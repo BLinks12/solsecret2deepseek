@@ -499,6 +499,15 @@
             
             let solanaWallet = null;
             let publicKey = null;
+            let connection = null;
+            
+            // Initialize Solana connection
+            const initSolana = () => {
+                connection = new solanaWeb3.Connection(
+                    solanaWeb3.clusterApiUrl('devnet'),
+                    'confirmed'
+                );
+            };
             
             // Check if Phantom wallet is installed
             const isPhantomInstalled = () => {
@@ -550,8 +559,17 @@
                 const recipient = document.getElementById('recipient').value;
                 const message = messageInput.value;
                 
-                if (!recipient || !solanaWeb3.PublicKey.isOnCurve(recipient)) {
-                    showStatus('Please enter a valid Solana wallet address', 'error');
+                if (!recipient) {
+                    showStatus('Please enter a recipient address', 'error');
+                    return;
+                }
+                
+                // Validate Solana address
+                let recipientPubKey;
+                try {
+                    recipientPubKey = new solanaWeb3.PublicKey(recipient);
+                } catch (e) {
+                    showStatus('Invalid Solana wallet address', 'error');
                     return;
                 }
                 
@@ -562,12 +580,6 @@
                 
                 try {
                     showStatus('Creating transaction...', 'loading');
-                    
-                    // Create connection to Solana devnet
-                    const connection = new solanaWeb3.Connection(
-                        solanaWeb3.clusterApiUrl('devnet'),
-                        'confirmed'
-                    );
                     
                     // Get recent blockhash
                     const recentBlockhash = await connection.getRecentBlockhash();
@@ -583,7 +595,7 @@
                     transaction.add(
                         solanaWeb3.SystemProgram.transfer({
                             fromPubkey: new solanaWeb3.PublicKey(publicKey),
-                            toPubkey: new solanaWeb3.PublicKey(recipient),
+                            toPubkey: recipientPubKey,
                             lamports: lamports
                         })
                     );
@@ -599,12 +611,11 @@
                         })
                     );
                     
-                    // Sign and send transaction
-                    showStatus('Signing transaction...', 'loading');
-                    const signedTransaction = await solanaWallet.signTransaction(transaction);
+                    // Sign and send transaction - FIXED: Now using signAndSendTransaction
+                    showStatus('Please approve the transaction in Phantom...', 'loading');
                     
-                    showStatus('Sending transaction to Solana network...', 'loading');
-                    const signature = await connection.sendRawTransaction(signedTransaction.serialize());
+                    // This will trigger the Phantom wallet popup
+                    const { signature } = await solanaWallet.signAndSendTransaction(transaction);
                     
                     showStatus('Transaction sent! Confirming...', 'loading');
                     await connection.confirmTransaction(signature);
@@ -675,6 +686,9 @@
                     }, 5000);
                 }
             };
+            
+            // Initialize when page loads
+            initSolana();
             
             // Event listeners
             connectBtn.addEventListener('click', connectWallet);
