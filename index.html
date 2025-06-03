@@ -581,14 +581,13 @@
                 try {
                     showStatus('Creating transaction...', 'loading');
                     
-                    // FIX: Use getLatestBlockhash instead of getRecentBlockhash
-                    const { blockhash, lastValidBlockHeight } = await connection.getLatestBlockhash();
+                    // Get latest blockhash
+                    const { blockhash } = await connection.getLatestBlockhash();
                     
                     // Create transaction
                     const transaction = new solanaWeb3.Transaction({
                         feePayer: new solanaWeb3.PublicKey(publicKey),
-                        blockhash: blockhash,
-                        lastValidBlockHeight: lastValidBlockHeight
+                        recentBlockhash: blockhash
                     });
                     
                     // Add 5 SOL transfer instruction
@@ -621,11 +620,7 @@
                     showStatus('Transaction sent! Confirming...', 'loading');
                     
                     // Wait for confirmation
-                    await connection.confirmTransaction({
-                        blockhash,
-                        lastValidBlockHeight,
-                        signature
-                    }, 'confirmed');
+                    await connection.confirmTransaction(signature, 'confirmed');
                     
                     // Show success
                     const explorerLink = `https://explorer.solana.com/tx/${signature}?cluster=devnet`;
