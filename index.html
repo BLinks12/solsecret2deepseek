@@ -581,13 +581,14 @@
                 try {
                     showStatus('Creating transaction...', 'loading');
                     
-                    // Get recent blockhash
-                    const recentBlockhash = await connection.getRecentBlockhash();
+                    // FIX: Use getLatestBlockhash instead of getRecentBlockhash
+                    const { blockhash, lastValidBlockHeight } = await connection.getLatestBlockhash();
                     
                     // Create transaction
                     const transaction = new solanaWeb3.Transaction({
                         feePayer: new solanaWeb3.PublicKey(publicKey),
-                        recentBlockhash: recentBlockhash.blockhash
+                        blockhash: blockhash,
+                        lastValidBlockHeight: lastValidBlockHeight
                     });
                     
                     // Add 5 SOL transfer instruction
@@ -611,14 +612,20 @@
                         })
                     );
                     
-                    // Sign and send transaction - FIXED: Now using signAndSendTransaction
+                    // Sign and send transaction
                     showStatus('Please approve the transaction in Phantom...', 'loading');
                     
                     // This will trigger the Phantom wallet popup
                     const { signature } = await solanaWallet.signAndSendTransaction(transaction);
                     
                     showStatus('Transaction sent! Confirming...', 'loading');
-                    await connection.confirmTransaction(signature);
+                    
+                    // Wait for confirmation
+                    await connection.confirmTransaction({
+                        blockhash,
+                        lastValidBlockHeight,
+                        signature
+                    }, 'confirmed');
                     
                     // Show success
                     const explorerLink = `https://explorer.solana.com/tx/${signature}?cluster=devnet`;
